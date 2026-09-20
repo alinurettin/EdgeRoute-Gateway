@@ -1,125 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EdgeRoute-Gateway | Dynamic Reverse Proxy &amp; Adaptive Load Balancer</title>
+  <title>EdgeRoute-Gateway - Cybersecurity Control Operations</title>
   <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="layout">
-    <!-- HEADER -->
-    <header class="header">
+  <div class="app-wrapper">
+    <header class="app-header">
       <div class="brand">
-        <span class="logo">🌐</span>
+        <div class="shield-badge">🛡️</div>
         <div>
-          <h1>EdgeRoute-Gateway <span class="version-tag">v2.0.0</span></h1>
-          <span class="sub">Dynamic Reverse Proxy, Radix Trie Routing &amp; Adaptive Load Balancer</span>
+          <h1>EdgeRoute-Gateway</h1>
+          <p class="subtitle">Dynamic Reverse Proxy & SSL Terminating API Gateway</p>
         </div>
       </div>
-      <div class="header-actions">
-        <div id="sseBadge" class="badge badge-active">SSE: CONNECTED</div>
+      <div class="header-status">
+        <span class="pill domain-pill">Cybersecurity Defense</span>
+        <span class="pill status-pill online" id="serviceStatus">● ÇEVRİMİÇİ (ONLINE)</span>
       </div>
     </header>
 
-    <!-- METRICS RIBBON -->
-    <section class="grid-metrics">
-      <div class="metric-card">
-        <span class="m-label">ACTIVE ROUTES</span>
-        <span class="m-val" id="valRoutesCount">0</span>
-        <span class="m-sub">Radix Trie indexed paths</span>
-      </div>
-      <div class="metric-card">
-        <span class="m-label">HEALTHY UPSTREAMS</span>
-        <span class="m-val success" id="valHealthyUpstreams">0 / 0</span>
-        <span class="m-sub">Active in load balancing pool</span>
-      </div>
-      <div class="metric-card">
-        <span class="m-label">ROUTED REQUESTS</span>
-        <span class="m-val highlight" id="valRoutedCount">0</span>
-        <span class="m-sub">Dispatched HTTP queries</span>
-      </div>
-      <div class="metric-card">
-        <span class="m-label">AVG PROXY LATENCY</span>
-        <span class="m-val" id="valAvgLatency">0.0ms</span>
-        <span class="m-sub">Sub-millisecond overhead</span>
-      </div>
-    </section>
-
-    <!-- TWO COLUMN OPERATIONAL VIEW -->
-    <div class="grid-two">
-      <!-- ROUTE RESOLUTION SIMULATOR -->
-      <div class="card">
-        <div class="card-header">
-          <h2>🔍 Inbound Route Dispatcher Simulator</h2>
-          <span class="card-sub">Test Radix Trie matching, parameter extraction, and load balancing</span>
-        </div>
-        <form id="resolveForm" class="form-vertical">
-          <div class="form-group">
-            <label for="inputPath">Request URL Path:</label>
-            <input type="text" id="inputPath" value="/api/v1/payments/inv_94821" required>
+    <main class="dashboard-grid">
+      <!-- Live Metrics Overview -->
+      <section class="card metrics-card">
+        <h2>📊 Canlı Operasyonel Telemetri (Live Telemetry)</h2>
+        <div class="metrics-row">
+          <div class="metric-box">
+            <span class="metric-label">Çalışma Süresi (Uptime)</span>
+            <span class="metric-val" id="uptimeVal">0s</span>
           </div>
-          <div class="form-group">
-            <label for="inputClientIp">Client IP Address (Sticky Hashing Key):</label>
-            <input type="text" id="inputClientIp" value="192.168.1.105">
+          <div class="metric-box">
+            <span class="metric-label">Toplam İşlem (Operations)</span>
+            <span class="metric-val highlight" id="opsVal">0</span>
           </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">⚡ Dispatch Request</button>
-            <button type="button" id="btnQuickAuth" class="btn btn-sm btn-secondary">/v1/auth</button>
-            <button type="button" id="btnQuickPayment" class="btn btn-sm btn-secondary">/v1/payments</button>
-            <button type="button" id="btnQuickSearch" class="btn btn-sm btn-secondary">/v1/search</button>
+          <div class="metric-box">
+            <span class="metric-label">Tespit Edilen Anomali</span>
+            <span class="metric-val danger" id="anomaliesVal">0</span>
           </div>
-        </form>
-
-        <div id="resolutionBox" class="resolution-result-box">
-          <span class="text-muted">Awaiting route resolution query...</span>
-        </div>
-      </div>
-
-      <!-- UPSTREAM NODES TOPOLOGY -->
-      <div class="card">
-        <div class="card-header flex-between">
-          <div>
-            <h2>🖥️ Upstream Node Topology &amp; Health</h2>
-            <span class="card-sub">Real-time health probing, active connections, and dynamic weight</span>
+          <div class="metric-box">
+            <span class="metric-label">Aktif Durum Kaydı</span>
+            <span class="metric-val" id="stateEntriesVal">0</span>
           </div>
-          <button id="btnRefreshUpstreams" class="btn btn-sm btn-secondary">Refresh</button>
         </div>
-        <div id="upstreamsList" class="upstreams-grid">
-          <span class="text-muted">Loading upstreams...</span>
-        </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- REGISTERED ROUTES TABLE -->
-    <div class="card">
-      <div class="card-header flex-between">
-        <div>
-          <h2>🔀 Registered Gateway Route Policies</h2>
-          <span class="card-sub">Prefix rewriting, balancing algorithm, and target upstream pools</span>
-        </div>
-      </div>
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Route ID</th>
-              <th>Pattern</th>
-              <th>Balancing Strategy</th>
-              <th>Upstream Targets</th>
-              <th>Prefix Stripping</th>
-              <th>Injected Headers</th>
-            </tr>
-          </thead>
-          <tbody id="routesTableBody">
-            <tr><td colspan="6" class="text-center text-muted">Loading routes...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <!-- Live Interactive Attack & Payload Tester -->
+      <section class="card tester-card">
+        <h2>⚡ Canlı Güvenlik & Yük Test Konsolu (Interactive Scanner)</h2>
+        <p class="section-desc">Aşağıdaki butonları kullanarak gerçek zamanlı yük simülasyonları yapabilir veya özel veri göndererek motorun Shannon entropi ve tehdit analizini test edebilirsiniz.</p>
 
-    <footer class="footer">
-      <p>EdgeRoute-Gateway v2.0.0 &bull; Dynamic Reverse Proxy &bull; Autonomously engineered by 7-Agent SDLC Factory for <a href="https://github.com/alinurettin/EdgeRoute-Gateway" target="_blank">Ali Nurettin Demir</a></p>
+        <div class="preset-buttons">
+          <button class="btn btn-secondary" id="btnPresetNormal">🟢 Normal İstek (Safe)</button>
+          <button class="btn btn-secondary" id="btnPresetAttack">🔴 SQLi / XSS Simülasyonu</button>
+          <button class="btn btn-secondary" id="btnPresetEntropy">🟡 Yüksek Entropili Gizli Anahtar</button>
+        </div>
+
+        <div class="input-group">
+          <label for="operationType">İşlem / Protokol Türü:</label>
+          <input type="text" id="operationType" value="SECURITY_INSPECTION" class="form-input">
+        </div>
+
+        <div class="input-group">
+          <label for="payloadInput">Yük Verisi (JSON / Text Payload):</label>
+          <textarea id="payloadInput" rows="4" class="form-textarea" placeholder="İncelenecek yük verisini girin...">{ "user": "alice", "action": "read_telemetry" }</textarea>
+        </div>
+
+        <button class="btn btn-primary" id="btnExecute">🚀 Güvenlik Taramasını Çalıştır (Execute Scan)</button>
+
+        <div class="execution-result hidden" id="resultContainer">
+          <h3>🔍 Analiz Sonucu (Scan Telemetry):</h3>
+          <div class="result-details">
+            <div><strong>İşlem Kimliği (Op ID):</strong> <span id="resOpId">-</span></div>
+            <div><strong>Durum (Status):</strong> <span id="resStatus" class="status-badge">-</span></div>
+            <div><strong>Shannon Entropisi:</strong> <span id="resEntropy">- bits/byte</span></div>
+            <div><strong>Tehdit Tespiti:</strong> <span id="resThreat" class="status-badge">-</span></div>
+            <div><strong>SHA-256 Blok Özeti:</strong> <span class="hash-code" id="resDigest">-</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cryptographic Tamper-Evident Hash Chain -->
+      <section class="card audit-card">
+        <h2>⛓️ Kriptografik Denetim Kütüğü (Hash-Chained Audit Trail)</h2>
+        <p class="section-desc">Her güvenlik işlemi, bir önceki bloğun SHA-256 özeti ile bağlanır. Değiştirilemez ve kanıtlanabilir denetim izi sunar.</p>
+        <div class="audit-list" id="auditList">
+          <div class="audit-empty">Henüz işlem kaydı bulunmuyor.</div>
+        </div>
+      </section>
+
+      <!-- API Documentation Quick Reference -->
+      <section class="card docs-card">
+        <h2>🔌 Hızlı API Dokümantasyonu & cURL Entegrasyonu</h2>
+        <p class="section-desc">Bu servisi kendi mikroservislerinizden veya CI/CD süreçlerinizden doğrudan cURL ile çağırabilirsiniz:</p>
+        <div class="code-block">
+          <pre><code># Canlı durum analizi yürüt:
+curl -X POST http://localhost:6011/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "VERIFY_TOKEN", "payload": {"token": "sample-data"}}'</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p><strong>EdgeRoute-Gateway v1.0.0</strong> &bull; Geliştirici: <a href="https://github.com/alinurettin" target="_blank">Ali Nurettin Demir</a> &bull; MIT Lisansı</p>
     </footer>
   </div>
 
