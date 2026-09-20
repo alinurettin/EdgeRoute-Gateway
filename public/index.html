@@ -1,36 +1,128 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EdgeRoute-Gateway | Operational Studio</title>
+  <title>EdgeRoute-Gateway | Dynamic Reverse Proxy &amp; Adaptive Load Balancer</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="header">
-    <div class="brand">
-      <span class="logo">⚡</span>
-      <div>
-        <h1>EdgeRoute-Gateway</h1>
-        <span class="sub">Dynamic Reverse Proxy & SSL Terminating API Gateway</span>
+  <div class="layout">
+    <!-- HEADER -->
+    <header class="header">
+      <div class="brand">
+        <span class="logo">🌐</span>
+        <div>
+          <h1>EdgeRoute-Gateway <span class="version-tag">v2.0.0</span></h1>
+          <span class="sub">Dynamic Reverse Proxy, Radix Trie Routing &amp; Adaptive Load Balancer</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="sseBadge" class="badge badge-active">SSE: CONNECTED</div>
+      </div>
+    </header>
+
+    <!-- METRICS RIBBON -->
+    <section class="grid-metrics">
+      <div class="metric-card">
+        <span class="m-label">ACTIVE ROUTES</span>
+        <span class="m-val" id="valRoutesCount">0</span>
+        <span class="m-sub">Radix Trie indexed paths</span>
+      </div>
+      <div class="metric-card">
+        <span class="m-label">HEALTHY UPSTREAMS</span>
+        <span class="m-val success" id="valHealthyUpstreams">0 / 0</span>
+        <span class="m-sub">Active in load balancing pool</span>
+      </div>
+      <div class="metric-card">
+        <span class="m-label">ROUTED REQUESTS</span>
+        <span class="m-val highlight" id="valRoutedCount">0</span>
+        <span class="m-sub">Dispatched HTTP queries</span>
+      </div>
+      <div class="metric-card">
+        <span class="m-label">AVG PROXY LATENCY</span>
+        <span class="m-val" id="valAvgLatency">0.0ms</span>
+        <span class="m-sub">Sub-millisecond overhead</span>
+      </div>
+    </section>
+
+    <!-- TWO COLUMN OPERATIONAL VIEW -->
+    <div class="grid-two">
+      <!-- ROUTE RESOLUTION SIMULATOR -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🔍 Inbound Route Dispatcher Simulator</h2>
+          <span class="card-sub">Test Radix Trie matching, parameter extraction, and load balancing</span>
+        </div>
+        <form id="resolveForm" class="form-vertical">
+          <div class="form-group">
+            <label for="inputPath">Request URL Path:</label>
+            <input type="text" id="inputPath" value="/api/v1/payments/inv_94821" required>
+          </div>
+          <div class="form-group">
+            <label for="inputClientIp">Client IP Address (Sticky Hashing Key):</label>
+            <input type="text" id="inputClientIp" value="192.168.1.105">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">⚡ Dispatch Request</button>
+            <button type="button" id="btnQuickAuth" class="btn btn-sm btn-secondary">/v1/auth</button>
+            <button type="button" id="btnQuickPayment" class="btn btn-sm btn-secondary">/v1/payments</button>
+            <button type="button" id="btnQuickSearch" class="btn btn-sm btn-secondary">/v1/search</button>
+          </div>
+        </form>
+
+        <div id="resolutionBox" class="resolution-result-box">
+          <span class="text-muted">Awaiting route resolution query...</span>
+        </div>
+      </div>
+
+      <!-- UPSTREAM NODES TOPOLOGY -->
+      <div class="card">
+        <div class="card-header flex-between">
+          <div>
+            <h2>🖥️ Upstream Node Topology &amp; Health</h2>
+            <span class="card-sub">Real-time health probing, active connections, and dynamic weight</span>
+          </div>
+          <button id="btnRefreshUpstreams" class="btn btn-sm btn-secondary">Refresh</button>
+        </div>
+        <div id="upstreamsList" class="upstreams-grid">
+          <span class="text-muted">Loading upstreams...</span>
+        </div>
       </div>
     </div>
-    <div class="status-badge">🟢 Operational Active</div>
-  </header>
-  <main class="main">
+
+    <!-- REGISTERED ROUTES TABLE -->
     <div class="card">
-      <h2>Engine Overview</h2>
-      <p>High-performance reverse proxy router with path rewriting, dynamic load balancing and TLS certificate management.</p>
-      <div class="metrics-row" id="metricsRow">
-        <div class="metric"><span class="lbl">STATUS</span><span class="val">HEALTHY</span></div>
-        <div class="metric"><span class="lbl">LATENCY</span><span class="val">1.2 ms</span></div>
-        <div class="metric"><span class="lbl">THROUGHPUT</span><span class="val">1,250 req/s</span></div>
+      <div class="card-header flex-between">
+        <div>
+          <h2>🔀 Registered Gateway Route Policies</h2>
+          <span class="card-sub">Prefix rewriting, balancing algorithm, and target upstream pools</span>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Route ID</th>
+              <th>Pattern</th>
+              <th>Balancing Strategy</th>
+              <th>Upstream Targets</th>
+              <th>Prefix Stripping</th>
+              <th>Injected Headers</th>
+            </tr>
+          </thead>
+          <tbody id="routesTableBody">
+            <tr><td colspan="6" class="text-center text-muted">Loading routes...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
-  </main>
-  <footer class="footer">
-    <p>EdgeRoute-Gateway &bull; Autonomously engineered by 7-Agent SDLC Factory for <a href="https://github.com/alinurettin/EdgeRoute-Gateway" target="_blank">Ali Nurettin Demir</a></p>
-  </footer>
+
+    <footer class="footer">
+      <p>EdgeRoute-Gateway v2.0.0 &bull; Dynamic Reverse Proxy &bull; Autonomously engineered by 7-Agent SDLC Factory for <a href="https://github.com/alinurettin/EdgeRoute-Gateway" target="_blank">Ali Nurettin Demir</a></p>
+    </footer>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 # ⚡ EdgeRoute-Gateway
-> **Dynamic Reverse Proxy & SSL Terminating API Gateway**  
+> **High-Performance Layer 7 Reverse Proxy, Radix Trie Routing Engine & Adaptive Load Balancer**  
 > *Developed autonomously by the 7-Agent SDLC Software Factory for [Ali Nurettin Demir](https://github.com/alinurettin)*
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/tests-100%25_passed-success.svg)]()
+[![Tests](https://img.shields.io/badge/tests-21%2F21%20passing%20(100%25)-success.svg)]()
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-blue.svg)]()
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,9 +11,9 @@
 ---
 
 ## 🌟 Executive Summary & Value Proposition
-High-performance reverse proxy router with path rewriting, dynamic load balancing and TLS certificate management.
+As microservice deployments scale, routing client requests efficiently without adding latency or operational complexity is critical. Traditional enterprise ingress controllers add significant memory footprints and complex declarative configurations.
 
-In modern software architectures, organizations struggle with bloated cloud dependencies, expensive managed services, and vendor lock-in. **EdgeRoute-Gateway** provides a self-hosted, lightweight, sub-millisecond solution crafted from first principles with zero external runtime dependencies.
+**EdgeRoute-Gateway** is a lightweight, zero-dependency reverse proxy, API gateway, and adaptive load balancer written from first principles in pure Node.js. It features $O(K)$ Radix Trie path resolution, parameter extraction (`:userId`), prefix stripping, Smooth Weighted Round-Robin (Nginx algorithm), Ketama consistent hashing with virtual nodes, and active circuit breaking.
 
 ---
 
@@ -21,106 +21,127 @@ In modern software architectures, organizations struggle with bloated cloud depe
 
 ```mermaid
 flowchart TD
-    Client["🌐 Client Applications / Microservices"] -->|HTTP REST / JSON| Gateway["⚡ EdgeRoute-Gateway Entrypoint (Port 6011)"]
-    Gateway --> Router["🔀 Route Dispatcher & Middleware"]
-    Router --> Engine["🧠 Core Algorithmic Engine"]
-    Engine --> Storage["💾 In-Memory High-Speed State Store"]
-    Router --> Static["📦 Embedded Operational Dashboard (Web UI)"]
-    Engine --> Metrics["📊 OpenTelemetry & Health Telemetry Exporter"]
+    subgraph Clients [Inbound Traffic & Admin Web Studio]
+        Web["🖥️ Dark-Mode Dashboard (Port 6011)"]
+        Client["📱 Mobile & Web Clients"]
+        CLI["⚙️ CI/CD & Service Discovery API"]
+    end
+
+    subgraph CoreEngine [EdgeRoute-Gateway Ingress]
+        Router["⚡ HTTP Route Dispatcher"]
+        Trie["🌲 Radix Trie Path Matcher"]
+        Balancer["⚖️ Adaptive Load Balancers (RR, WRR, Ketama)"]
+        Circuit["🛡️ Circuit Breaker & EMA Latency Tracker"]
+        SSE["📡 SSE Live Event Stream"]
+    end
+
+    subgraph BackendClusters [Microservice Upstream Pools]
+        Auth["🔐 Auth Service (:8001)"]
+        Billing["💳 Billing Cluster (:9001)"]
+        Search["🔍 Search Engine (:7001)"]
+    end
+
+    Client --> Router
+    Web --> Router
+    CLI --> Router
+    Router --> Trie --> Balancer --> Circuit
+    Circuit --> Auth & Billing & Search
+    Router -->|Routing Events| SSE
+    SSE -->|text/event-stream| Web
 ```
 
 ---
 
-## 🎯 Key Architectural Features
-- **Zero External Dependencies:** Built with pure Node.js standard libraries for instantaneous boot times (< 50ms) and minimal container footprints.
-- **High-Throughput Algorithmic Processing:** Employs optimized memory structures and sub-millisecond execution pathways.
-- **Built-in Live Web Dashboard:** Embedded responsive dark-mode operational UI for telemetry monitoring, status tracking, and ad-hoc query evaluation.
-- **Containerized & Cloud-Native:** Ships with production-ready multi-stage `Dockerfile` and `docker-compose.yml` configurations.
-- **Continuous Integration (CI/CD):** Integrated automated GitHub Actions workflow verifying code integrity, test suites, and Docker builds on every push.
+## 🔬 Mathematical & Algorithmic Foundation
+
+### 1. Radix Trie Path Resolution ($O(K)$)
+Paths are parsed into slash-separated tokens and traversed down a compressed prefix tree. Rather than evaluating $N$ regular expressions linearly, path lookup time is bounded by path segment depth $K$ ($O(K)$ where $K \le 8$).
+
+### 2. Smooth Weighted Round-Robin (Nginx Algorithm)
+Maintains current dynamic weights $c_i$ initialized to zero. For each request:
+$$c_i \leftarrow c_i + w_i \quad \forall i$$
+$$k = \arg\max_{i} c_i$$
+$$c_k \leftarrow c_k - \sum w_i$$
+This algorithm guarantees smooth temporal distribution of load without burst clustering.
+
+### 3. Ketama Consistent Hashing
+Virtual nodes are mapped along a 32-bit continuum $[0, 2^{32}-1]$. Binary search maps incoming client IP hashes to the nearest upstream in $O(\log(M \cdot V))$ time, preserving cache stickiness upon upstream changes.
 
 ---
 
 ## 🔌 API Specification & REST Endpoints
-All API endpoints accept and return JSON with standard CORS headers enabled.
 
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Health status and uptime |
+| `GET` | `/api/stats` | Gateway metrics, active routes, and healthy upstreams |
+| `GET` | `/api/routes` | List registered gateway route policies |
+| `POST` | `/api/routes` | Register new dynamic route policy |
+| `GET` | `/api/upstreams` | List configured upstreams with telemetry metrics |
+| `POST` | `/api/upstreams` | Add new upstream node to cluster pool |
+| `PUT` | `/api/upstreams/:id/health` | Manually toggle node health status |
+| `POST` | `/api/gateway/resolve` | Simulate request resolution and load balancing dispatch |
+| `GET` | `/api/events/stream` | Server-Sent Events (SSE) live broadcast stream |
 
-### Endpoints
-- `ALL /v1/*`: Proxies downstream requests with round-robin load balancing
-
-
-### Standard Health & Diagnostics Endpoints
-- **`GET /api/health`**: Returns engine health status, uptime, and timestamp.
-  ```bash
-  curl -X GET http://localhost:6011/api/health
-  ```
-- **`GET /api/stats`**: Returns real-time metrics, throughput, and active engine load.
-  ```bash
-  curl -X GET http://localhost:6011/api/stats
-  ```
+### Route Resolution Example
+```bash
+curl -X POST http://localhost:6011/api/gateway/resolve \
+  -H "Content-Type: application/json" \
+  -d '{
+    "path": "/api/v1/payments/inv_94821",
+    "clientKey": "192.168.1.100"
+  }'
+```
 
 ---
 
 ## 🧪 Comprehensive Automated Testing & Verification
-This project includes an exhaustive, non-mocked automated test suite that validates:
-1. **Algorithmic Correctness:** Verifies core mathematical functions and operational logic.
-2. **Boundary & Edge Cases:** Evaluates empty payloads, zero inputs, and exception handling.
-3. **HTTP Integration:** Boots an ephemeral HTTP server, fires live requests, and asserts HTTP status codes (`200 OK`, `400 Bad Request`, `429 Rate Limited`).
+The test suite in `tests/run_tests.js` runs without external mocking libraries:
 
-### Running Tests
 ```bash
-npm test
-# or directly with Node:
 node tests/run_tests.js
 ```
 
-All tests run in isolation and guarantee 100% assertions pass prior to release.
+### Verified Test Categories:
+- **Radix Trie Router (4 assertions):** Exact matches, multi-variable parameter extraction, wildcard globbing, and mismatch rejection.
+- **Load Balancing Strategies (3 assertions):** Round-robin alternation, smooth weighted round-robin distribution, and Ketama sticky hashing.
+- **Circuit Breaking & Health (3 assertions):** Three-failure trip to `UNHEALTHY`, two-success recovery to `HEALTHY`, and automatic pool bypassing.
+- **Request Header & Path Enrichment (1 assertion):** Prefix stripping and proxy header injection.
+- **Live Ephemeral HTTP Gateway (10 assertions):** Ephemeral port 0 REST and SSE integration.
 
 ---
 
-## 🚀 Getting Started & Quick Start
+## 🚀 Getting Started
 
 ### Local Node.js Execution
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/alinurettin/EdgeRoute-Gateway.git
 cd EdgeRoute-Gateway
 
-# 2. Run the automated test suite
+# 2. Run automated test suite
 npm test
 
-# 3. Start the engine
+# 3. Start engine
 npm start
 ```
-Access the live operational dashboard in your browser at:  
-👉 **`http://localhost:6011`**
+Open **`http://localhost:6011`** in your browser to access the live dashboard.
 
-### Running with Docker & Docker Compose
+### Docker & Docker Compose
 ```bash
-# Build and spin up containerized service
 docker-compose up -d --build
 ```
 
 ---
 
-## ⚙️ Configuration & Environment Variables
-
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `PORT` | `6011` | HTTP listening port for REST API and Web Dashboard |
-| `NODE_ENV` | `production` | Execution environment mode (`development`, `production`) |
-
----
-
-## 📋 7-Agent Autonomous SDLC Engineering Artifacts
-This software system was designed, documented, implemented, and verified autonomously by the 7-Agent SDLC Team:
-- 🔍 [Technical & Market Research Report](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/RESEARCH_REPORT.md)
-- 📊 [Product Requirements Document (PRD)](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/PRD.md)
-- 📐 [System Architecture Specification](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/ARCHITECTURE.md)
-- 🧪 [QA & Automated Test Verification Report](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/QA_REPORT.md)
-- 🚀 [Formal Release Notes v1.0.0](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/RELEASE_NOTES.md)
+## 📄 Artifacts & Documentation
+- [Research Report](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/RESEARCH_REPORT.md)
+- [Product Requirements Document (PRD)](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/PRD.md)
+- [Architecture Blueprint](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/ARCHITECTURE.md)
+- [QA & Verification Report](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/QA_REPORT.md)
+- [Release Notes](file:///C:/Users/alinurettin/.gemini/antigravity/scratch/projects/EdgeRoute-Gateway/artifacts/RELEASE_NOTES.md)
 
 ---
 
-## 👤 Author & Open-Source License
-- **Author & Maintainer:** Ali Nurettin Demir ([@alinurettin](https://github.com/alinurettin))
-- **License:** [MIT License](LICENSE) &copy; 2026 Ali Nurettin Demir
+## 📜 License
+MIT License. Engineered autonomously by the 7-Agent SDLC Software Factory for Ali Nurettin Demir.
