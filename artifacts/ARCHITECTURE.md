@@ -1,4 +1,4 @@
-﻿# ğŸ“ System Architecture Document: EdgeRoute-Gateway
+﻿# 📐 System Architecture Document: EdgeRoute-Gateway
 - **Project:** EdgeRoute-Gateway
 - **Author:** Expert Software Architect
 - **Status:** APPROVED & COMPLETE
