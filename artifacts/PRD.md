@@ -1,4 +1,4 @@
-﻿# ğŸ“Š Product Requirements Document (PRD): EdgeRoute-Gateway
+﻿# 📊 Product Requirements Document (PRD): EdgeRoute-Gateway
 - **Project:** EdgeRoute-Gateway
 - **Author:** Expert Business Analyst
 - **Status:** APPROVED & COMPLETE
